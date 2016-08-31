@@ -51,7 +51,12 @@
                          (str/replace "$NODE_ADDRESS" (net/local-ip)))
                :> "/etc/arangodb3/arangod.conf")
        
-       (c/exec :service :arangodb3 :restart)
+       (c/exec :service :arangodb3 :stop)
+       (c/exec :rm :-rf :/var/lib/arangodb3)
+       (c/exec :mkdir :/var/lib/arangodb3)
+       (c/exec :chown :-R :arangodb :/var/lib/arangodb3)
+       (c/exec :chgrp :-R :arangodb :/var/lib/arangodb3)
+       (c/exec :service :arangodb3 :start)
        
        (c/exec :sleep :5)
        
@@ -60,9 +65,15 @@
     (teardown! [_ test node]
       (info node "tearing down arangodb agency")
       (c/su
+       ()
+       (info node "stopping service arangodb3")
        (c/exec :service :arangodb3 :stop)
-       ;;(c/exec :dpkg :--purge :arangodb3)
-       (c/exec :rm :-rf "/var/lib/arangodb3/*"))
+       (info node "nuking arangodb3 directory")
+       (c/exec :rm :-rf :/var/lib/arangodb3)
+       (c/exec :mkdir :/var/lib/arangodb3)
+       (c/exec :chown :-R :arangodb :/var/lib/arangodb3)
+       (c/exec :chgrp :-R :arangodb :/var/lib/arangodb3)
+       )
       )
     
     db/LogFiles
@@ -165,7 +176,7 @@
                                    {:type :info, :f :start}
                                    (gen/sleep 5)
                                    {:type :info, :f :stop}])))
-                         (gen/time-limit 60))
+                         (gen/time-limit 30))
          :model   (model/cas-register 0)
          :checker (checker/compose
                    {:perf   (checker/perf)
